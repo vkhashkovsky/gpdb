@@ -120,7 +120,8 @@ check-demo-cluster:
 	$(MAKE) -C gpAux/gpdemo check
 check check-tests: all
 
-check check-tests installcheck installcheck-parallel installcheck-tests:
+check check-tests installcheck installcheck-parallel installcheck-tests: CHECKPREP_TOP=src/test/regress
+check check-tests installcheck installcheck-parallel installcheck-tests: submake-generated-headers
 	$(MAKE) -C src/test/regress $@
 
 cluster_check_and_run:
@@ -134,7 +135,9 @@ check:
 	@echo "run tests..."
 	-@ . $(prefix)/greenplum_path.sh && .  $(top_builddir)/gpAux/gpdemo/gpdemo-env.sh && $(MAKE) -C  $(top_builddir) installcheck
 
+
 $(call recurse,check-world,src/test src/pl src/interfaces/ecpg contrib src/bin gpcontrib,check)
+$(call recurse,checkprep,  src/test src/pl src/interfaces/ecpg contrib src/bin gpcontrib)
 
 # This is a top-level target that runs "all" regression test suites against
 # a running server. This is what the CI pipeline runs.
@@ -178,8 +181,8 @@ $(call recurse,installcheck-world,src/bin/pg_upgrade,check)
 # to put into "make all", either.
 .PHONY : unittest-check
 unittest-check:
-	$(MAKE) -C src/backend unittest-check
-	$(MAKE) -C src/bin unittest-check
+	$(MAKE) CFLAGS=-DUNITTEST -C src/backend unittest-check
+	$(MAKE) CFLAGS=-DUNITTEST -C src/bin unittest-check
 
 GNUmakefile: GNUmakefile.in $(top_builddir)/config.status
 	./config.status $@
@@ -189,7 +192,6 @@ GNUmakefile: GNUmakefile.in $(top_builddir)/config.status
 
 distdir	= postgresql-$(VERSION)
 dummy	= =install=
-garbage = =*  "#"*  ."#"*  *~*  *.orig  *.rej  core  postgresql-*
 
 dist: $(distdir).tar.gz $(distdir).tar.bz2
 	rm -rf $(distdir)
@@ -237,5 +239,8 @@ distcheck: dist
 # is sufficiently similar to the original one.
 	rm -rf $(distdir) $(dummy)
 	@echo "Distribution integrity checks out."
+
+cpluspluscheck: submake-generated-headers
+	$(top_srcdir)/src/tools/pginclude/cpluspluscheck $(top_srcdir) $(abs_top_builddir)
 
 .PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world
