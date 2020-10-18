@@ -124,16 +124,22 @@ check check-tests installcheck installcheck-parallel installcheck-tests: submake
 	$(MAKE) -C src/test/regress $@
 
 cluster_check_and_run:
+	rc=`PGPORT=5432 && pg_isready 1>/dev/null && echo $$? || echo $$?`; \
+	echo RV = $$rc ; \
+	if test $$rc = "0" ; then \
+	    echo "Found cluster on standard port" ; \
+	    exit 1; \
+	fi
+	@echo "Start checking Demo cluster"
 	@$(MAKE) -C $(top_builddir) check-demo-cluster 1>/dev/null
-	@echo "run demo-cluster" ;
+	@echo "run demo-cluster"
 	@. $(prefix)/greenplum_path.sh && $(MAKE) -C $(top_builddir) create-demo-cluster
 
 check:
 	@echo "check and run GP-cluster..."
-	-@$(MAKE) -C $(top_builddir) cluster_check_and_run && { echo "Cluster was started"; } || { echo "Cluster was found"; }
+	-$(MAKE) -C $(top_builddir) cluster_check_and_run && { echo "Cluster was started"; } || { echo "Cluster was found"; }
 	@echo "run tests..."
 	-@ . $(prefix)/greenplum_path.sh && .  $(top_builddir)/gpAux/gpdemo/gpdemo-env.sh && $(MAKE) -C  $(top_builddir) installcheck
-
 
 $(call recurse,check-world,src/test src/pl src/interfaces/ecpg contrib src/bin gpcontrib,check)
 $(call recurse,checkprep,  src/test src/pl src/interfaces/ecpg contrib src/bin gpcontrib)
